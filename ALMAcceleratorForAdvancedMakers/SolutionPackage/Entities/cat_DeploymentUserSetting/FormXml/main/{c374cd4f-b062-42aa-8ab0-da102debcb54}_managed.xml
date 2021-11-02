@@ -98,6 +98,19 @@
                         <control id="cat_allowbypassprepare" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="cat_allowbypassprepare" disabled="false" />
                       </cell>
                     </row>
+                    <row>
+                      <cell id="{cc370a0d-a61e-4a6c-b977-006fdcf7044f}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="Promote Solutions" languagecode="1033" />
+                        </labels>
+                        <control id="cat_allowpromote" classid="{3EF39988-22BB-4F0B-BBBE-64B5A3748AEE}" datafieldname="cat_allowpromote" disabled="false" />
+                      </cell>
+                      <cell locklevel="0" id="{38df0c56-99ef-43c7-8ef5-1051ed173391}">
+                        <labels>
+                          <label description="" languagecode="1033" />
+                        </labels>
+                      </cell>
+                    </row>
                   </rows>
                 </section>
                 <section name="null_section_4" id="8a92d2ba-cdca-4a82-a336-9b246b4c48e2" IsUserDefined="0" locklevel="0" showlabel="false" showbar="false" layout="varwidth" celllabelalignment="Left" celllabelposition="Left" columns="1" labelwidth="115">

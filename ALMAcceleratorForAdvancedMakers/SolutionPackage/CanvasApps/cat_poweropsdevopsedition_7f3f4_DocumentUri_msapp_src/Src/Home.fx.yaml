@@ -7,6 +7,17 @@ Home As screen:
         )
     Width: =Max(App.Width, App.DesignWidth)
 
+    lblSolution As label:
+        Font: =Font.'Segoe UI'
+        FontWeight: =Semibold
+        Height: =32
+        Size: =10
+        Text: ="SOLUTION"
+        Width: =258
+        X: =28
+        Y: =146
+        ZIndex: =6
+
     SearchBox As group:
         Height: =5
         Width: =5
@@ -142,14 +153,7 @@ Home As screen:
                             SolutionsLatestBuildStatuses,
                             uniquename = ThisItem.uniquename
                         ).deleteSolutionStatus.buildNumber
-                    ) And !IsBlankOrError(ThisItem.deploymentprofile) And !IsBlankOrError(
-                        First(
-                            Filter(
-                                ThisItem.deploymentrequests,
-                                'Request Type' = [@Type].Promote And 'Created By'.User = gblCdsUser.User
-                            )
-                        )
-                    ),
+                    ) And !IsBlankOrError(ThisItem.deploymentprofile),
                     DisplayMode.Edit,
                     DisplayMode.Disabled
                 )
@@ -286,7 +290,12 @@ Home As screen:
             Text: ="REQUEST DEPLOYMENT"
             Tooltip: =
             Width: =200
-            X: =767
+            X: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Promote Solutions') Or DeploymentUserSetting.'Promote Solutions' = 'A Yes or No boolean'.Allowed,
+                    767,
+                    407
+                )
             Y: =17
             ZIndex: =3
 
@@ -334,9 +343,9 @@ Home As screen:
             HoverColor: =ColorFade(btnCommitAndPush.Color, 20%)
             HoverFill: =ColorFade(btnCommitAndPush.Fill, 20%)
             OnSelect: |
-                =UpdateContext({showDialogOverlay: true});
-                UpdateContext(
+                =UpdateContext(
                     {
+                        showDialogOverlay: true,
                         locLastPromoteRequest: First(
                             Filter(
                                 glrSolutions.Selected.deploymentrequests,
@@ -396,16 +405,17 @@ Home As screen:
                     )
                 );
                 If(
-                    IsBlankOrError(locLastPromoteRequest) Or IsBlankOrError(locLastPromoteRequest.'Target Branch') Or IsBlankOrError(
+                    IsBlankOrError(locLastPromoteRequest) Or IsBlankOrError(locLastPromoteRequest.'Target Branch') Or (IsBlankOrError(
                         LookUp(
                             SelectedRepoBranches,
                             DisplayName = locLastPromoteRequest.'Target Branch'
                         )
-                    ),
+                    ) And CountRows(SelectedRepoBranches) > 0),
                     UpdateContext(
                         {
                             locDefaultBranchForCommit: locBranchesDeploymentProfile.'Promote Target Branch Name',
-                            locNewBranchText: gblUser.Email & "-" & glrSolutions.Selected.uniquename
+                            locNewBranchText: gblUser.Email & "-" & glrSolutions.Selected.uniquename,
+                            locCreateNewBranch: true
                         }
                     );
                     If(
@@ -417,7 +427,8 @@ Home As screen:
                                     glrSolutions.Selected.uniquename in DisplayName,
                                     DisplayName
                                 ),
-                                locNewBranchText: gblUser.Email & "-" & glrSolutions.Selected.uniquename
+                                locNewBranchText: gblUser.Email & "-" & glrSolutions.Selected.uniquename,
+                                locCreateNewBranch: true
                             }
                         )
                     );
@@ -425,12 +436,13 @@ Home As screen:
                     UpdateContext(
                         {
                             locNewBranchText: "",
-                            locDefaultBranchForCommit: locLastPromoteRequest.'Target Branch'
+                            locDefaultBranchForCommit: locLastPromoteRequest.'Target Branch',
+                            locCreateNewBranch: false
                         }
                     )
                 );
-                Reset(tglCreateBranch);
                 Reset(txtBranchToCreate);
+                Reset(tglCreateBranch);
                 Reset(drpAdoBranches);
                 UpdateContext(
                     {
@@ -443,6 +455,12 @@ Home As screen:
             PressedFill: =btnCommitAndPush.Color
             Size: =11
             Text: ="PROMOTE SOLUTION"
+            Visible: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Promote Solutions') Or DeploymentUserSetting.'Promote Solutions' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
             Width: =200
             X: =407
             Y: =17
@@ -497,57 +515,16 @@ Home As screen:
             PressedBorderColor: =ColorFade(imgCommitStatus.BorderColor, -20%)
             PressedFill: =ColorFade(imgCommitStatus.Fill, -20%)
             Tooltip: =
+            Visible: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Promote Solutions') Or DeploymentUserSetting.'Promote Solutions' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
             Width: =50
             X: =632
             Y: =17
             ZIndex: =6
-
-        imgPullRequestStatus As image:
-            AccessibleLabel: ="Deploy Status"
-            BorderColor: =ColorFade(imgPullRequestStatus.Fill, -20%)
-            DisplayMode: =DisplayMode.View
-            Height: =45
-            HoverBorderColor: =ColorFade(imgPullRequestStatus.BorderColor, 20%)
-            HoverFill: =ColorFade(imgPullRequestStatus.Fill, 20%)
-            Image: |-
-                =If(
-                    statusesLoading,
-                    'loading-buffering',
-                    Switch(
-                        LookUp(
-                            SolutionsLatestBuildStatuses,
-                            uniquename = ThisItem.uniquename
-                        ).pullRequestStatus.status,
-                        "active",
-                        LookUp(
-                            StageStatesIcons,
-                            state = "notStarted"
-                        ).image,
-                        "completed",
-                        LookUp(
-                            StageStatesIcons,
-                            state = "succeeded"
-                        ).image,
-                        "abandoned",
-                        LookUp(
-                            StageStatesIcons,
-                            state = "failed"
-                        ).image,
-                        LookUp(
-                            StageStatesIcons,
-                            state = "empty"
-                        ).image
-                    )
-                )
-            OnSelect: =Select(Parent);
-            PaddingBottom: =10
-            PaddingTop: =10
-            PressedBorderColor: =ColorFade(imgPullRequestStatus.BorderColor, -20%)
-            PressedFill: =ColorFade(imgPullRequestStatus.Fill, -20%)
-            Width: =50
-            X: =996
-            Y: =17
-            ZIndex: =7
 
         icoLaunchExportBuildUrl As icon.Add:
             AccessibleLabel: ="Open Publish Build"
@@ -605,7 +582,60 @@ Home As screen:
                     ),
                     Blank()
                 )
+            Visible: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Promote Solutions') Or DeploymentUserSetting.'Promote Solutions' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
             X: =626
+            ZIndex: =7
+
+        imgPullRequestStatus As image:
+            AccessibleLabel: ="Deploy Status"
+            BorderColor: =ColorFade(imgPullRequestStatus.Fill, -20%)
+            DisplayMode: =DisplayMode.View
+            Height: =45
+            HoverBorderColor: =ColorFade(imgPullRequestStatus.BorderColor, 20%)
+            HoverFill: =ColorFade(imgPullRequestStatus.Fill, 20%)
+            Image: |-
+                =If(
+                    statusesLoading,
+                    'loading-buffering',
+                    Switch(
+                        LookUp(
+                            SolutionsLatestBuildStatuses,
+                            uniquename = ThisItem.uniquename
+                        ).pullRequestStatus.status,
+                        "active",
+                        LookUp(
+                            StageStatesIcons,
+                            state = "notStarted"
+                        ).image,
+                        "completed",
+                        LookUp(
+                            StageStatesIcons,
+                            state = "succeeded"
+                        ).image,
+                        "abandoned",
+                        LookUp(
+                            StageStatesIcons,
+                            state = "failed"
+                        ).image,
+                        LookUp(
+                            StageStatesIcons,
+                            state = "empty"
+                        ).image
+                    )
+                )
+            OnSelect: =Select(Parent);
+            PaddingBottom: =10
+            PaddingTop: =10
+            PressedBorderColor: =ColorFade(imgPullRequestStatus.BorderColor, -20%)
+            PressedFill: =ColorFade(imgPullRequestStatus.Fill, -20%)
+            Width: =50
+            X: =btnCreatePullRequest.X + 225
+            Y: =17
             ZIndex: =8
 
         icoLaunchPullRequestUrl As icon.Add:
@@ -670,7 +700,7 @@ Home As screen:
                     ),
                     Blank()
                 )
-            X: =987
+            X: =btnCreatePullRequest.X + 215
             ZIndex: =9
 
         icoOpenSolution As icon.Add:
@@ -770,7 +800,7 @@ Home As screen:
                     false
                 )
             Width: =200
-            X: =1472
+            X: =btnCreatePullRequest.X + 705
             Y: =17
             ZIndex: =12
 
@@ -814,7 +844,7 @@ Home As screen:
                     false
                 )
             Width: =50
-            X: =1699
+            X: =btnCreatePullRequest.X + 932
             Y: =17
             ZIndex: =13
 
@@ -880,7 +910,7 @@ Home As screen:
                     true,
                     false
                 )
-            X: =1692
+            X: =btnCreatePullRequest.X + 925
             ZIndex: =14
 
         lblConfigureDeployment As label:
@@ -968,7 +998,7 @@ Home As screen:
             VerticalAlign: =VerticalAlign.Top
             Width: =400
             Wrap: =false
-            X: =1048
+            X: =btnCreatePullRequest.X + 281
             Y: =17
             ZIndex: =17
 
@@ -989,7 +1019,7 @@ Home As screen:
             FontWeight: =Normal
             Height: =29
             LineHeight: =1.6
-            OnSelect: =
+            OnSelect: =btnCreatePullRequest.X + 281
             PaddingBottom: =0
             PaddingLeft: =0
             PaddingRight: =0
@@ -999,7 +1029,7 @@ Home As screen:
             Tooltip: =ThisItem.friendlyname
             Width: =400
             Wrap: =false
-            X: =1048
+            X: =btnCreatePullRequest.X + 281
             Y: =42
             ZIndex: =18
 
@@ -1068,7 +1098,7 @@ Home As screen:
             PressedColor: =ColorFade(icoDeploymentProfile.Color, -20%)
             PressedFill: =ColorFade(icoDeploymentProfile.Fill, -20%)
             Width: =400
-            X: =1048
+            X: =btnCreatePullRequest.X + 281
             Y: =16
             ZIndex: =19
 
@@ -1104,6 +1134,23 @@ Home As screen:
             X: =1803
             Y: =26
             ZIndex: =20
+
+    lblDeploymentProfile As label:
+        Align: =Center
+        Font: =Font.'Segoe UI'
+        FontWeight: =Semibold
+        Height: =30
+        Size: =10
+        Text: ="PROFILE"
+        Width: =400
+        X: |-
+            =If(
+                IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Promote Solutions') Or DeploymentUserSetting.'Promote Solutions' = 'A Yes or No boolean'.Allowed,
+                1067,
+                707
+            )
+        Y: =146
+        ZIndex: =25
 
     PreLoader As Preloader:
         Height: =1012
@@ -1405,7 +1452,7 @@ Home As screen:
                     );
                     UpdateContext(
                         {
-                            publishBuildId: CustomAzureDevOps.RunPipeline(
+                            promoteBuildId: CustomAzureDevOps.RunPipeline(
                                 drpPushDeploymentProfiles.Selected.'AzDO Organization',
                                 drpPushDeploymentProfiles.Selected.'AzDO Project',
                                 piplineIdToRun,
@@ -1441,29 +1488,30 @@ Home As screen:
                             'Solution Name': glrSolutions.Selected.uniquename,
                             'Deployment Profile': drpPushDeploymentProfiles.Selected,
                             'Target Branch': If(
-                                tglCreateBranch.Value,
+                                txtBranchToCreate.Text <> "",
                                 txtBranchToCreate.Text,
                                 If(
-                                    txtBranch.Visible,
+                                    txtBranch.Text <> "",
                                     txtBranch.Text,
                                     drpAdoBranches.Selected.DisplayName
                                 )
                             ),
                             'Source Branch': If(
-                                tglCreateBranch.Value,
+                                txtBranchToCreate.Text <> "",
                                 If(
-                                    txtBranch.Visible,
+                                    txtBranch.Text <> "",
                                     txtBranch.Text,
                                     drpAdoBranches.Selected.DisplayName
                                 )
                             ),
-                            'Build ID': publishBuildId,
+                            'Build ID': promoteBuildId,
                             'Request Type': [@Type].Promote
                         }
                     );
                     Reset(tglCreateBranch);
                     Reset(txtCommitMessage);
                     Reset(txtBranchToCreate);
+                    If(txtBranchToCreate.Text <> "", UpdateContext({ locBranchesDeploymentProfile: Blank()}));
                     UpdateContext({locDefaultBranchForCommit: "", locNewBranchText: "", locStartCheckBuildStatusTimer: false});
                     Reset(tmrCheckBuildAndPullRequestStatuses);
                     UpdateContext({locStartCheckBuildStatusTimer: true});
@@ -1535,7 +1583,7 @@ Home As screen:
 
         tglCreateBranch As toggleSwitch:
             AccessibleLabel: ="Create New Branch"
-            Default: =!IsBlankOrError(locNewBranchText)
+            Default: =locCreateNewBranch
             FalseFill: =RGBA(237, 237, 237, 1)
             FalseHoverFill: =ColorFade(tglCreateBranch.FalseFill, 20%)
             FalseText: ="Create New Branch"
@@ -1543,7 +1591,7 @@ Home As screen:
             HandleFill: =If(tglCreateBranch.Value, PrimaryColor1Value, PrimaryColor2Value)
             HoverBorderColor: =ColorFade(tglCreateBranch.BorderColor, 20%)
             OnChange: |-
-                =UpdateContext({ locNewBranchText:  ""}); Reset(txtBranchToCreate);
+                =If(!tglCreateBranch.Value, UpdateContext({ locNewBranchText:  ""}); Reset(txtBranchToCreate));
             PressedBorderColor: =ColorFade(tglCreateBranch.BorderColor, -20%)
             TrueHoverFill: =ColorFade(tglCreateBranch.TrueFill, 20%)
             TrueText: ="Create New Branch"
@@ -1694,7 +1742,7 @@ Home As screen:
             FontWeight: =FontWeight.Semibold
             HandleFill: =If(tglPublishAdvancedSettings.Value, PrimaryColor1Value, PrimaryColor2Value)
             HoverBorderColor: =ColorFade(tglPublishAdvancedSettings.BorderColor, 20%)
-            OnChange: =Set(locNewBranchText,  ""); Reset(txtBranchToCreate);
+            OnChange: =
             PressedBorderColor: =ColorFade(tglPublishAdvancedSettings.BorderColor, -20%)
             TrueHoverFill: =ColorFade(tglPublishAdvancedSettings.TrueFill, 20%)
             TrueText: ="Show Advanced"
@@ -4460,79 +4508,23 @@ Home As screen:
         X: =490
         ZIndex: =36
 
-    Group2 As group:
-        Height: =5
-        Width: =5
-        X: =40
-        Y: =40
-        ZIndex: =37
-
-        lblSolution As label:
-            Font: =Font.'Segoe UI'
-            FontWeight: =Semibold
-            Height: =32
-            Size: =10
-            Text: ="SOLUTION"
-            Width: =258
-            X: =28
-            Y: =146
-            ZIndex: =6
-
-        lblTestProdStatus As label:
-            Align: =Center
-            Font: =Font.'Segoe UI'
-            FontWeight: =Semibold
-            Height: =36
-            Size: =10
-            Text: ="DELETE STATUS"
-            Visible: |-
-                =//If(
-                //    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Delete Solutions') Or DeploymentUserSetting.'Delete Solutions' = 'A Yes or No boolean'.Allowed,
-                //    true,
-                //    false
-                //)
-                false
-            X: =1664
-            Y: =146
-            ZIndex: =7
-
-        lblPushStatus As label:
-            Align: =Center
-            Font: =Font.'Segoe UI'
-            FontWeight: =Semibold
-            Height: =29
-            Size: =10
-            Text: ="STATUS"
-            Visible: =false
-            Width: =170
-            X: =605
-            Y: =146
-            ZIndex: =13
-
-        lblPullRequestStatus As label:
-            Align: =Center
-            Font: =Font.'Segoe UI'
-            FontWeight: =Semibold
-            Height: =32
-            Size: =10
-            Text: ="STATUS"
-            Visible: =false
-            Width: =292
-            X: =906
-            Y: =146
-            ZIndex: =14
-
-        lblDeploymentProfile As label:
-            Align: =Center
-            Font: =Font.'Segoe UI'
-            FontWeight: =Semibold
-            Height: =30
-            Size: =10
-            Text: ="PROFILE"
-            Width: =310
-            X: =1112
-            Y: =146
-            ZIndex: =25
+    Button1 As button:
+        HoverBorderColor: =ColorFade(Button1.BorderColor, 20%)
+        HoverColor: =ColorFade(Button1.Color, 20%)
+        HoverFill: =ColorFade(Button1.Fill, 20%)
+        OnSelect: |-
+            =Set(
+                DeploymentUserSetting,
+                First('Deployment User Settings')
+            );
+        PressedBorderColor: =Button1.Fill
+        PressedColor: =Button1.Fill
+        PressedFill: =Button1.Color
+        Text: ="Refresh Settings"
+        Width: =200
+        X: =20
+        Y: =13
+        ZIndex: =38
 
     grpManageSolutions As group:
         Height: =5

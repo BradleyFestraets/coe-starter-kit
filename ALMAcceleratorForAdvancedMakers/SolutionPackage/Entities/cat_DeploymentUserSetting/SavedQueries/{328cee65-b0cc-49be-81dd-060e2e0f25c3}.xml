@@ -14,6 +14,7 @@
           <cell name="cat_allowdelete" width="100" />
           <cell name="cat_allowimport" width="100" />
           <cell name="cat_allowmanagesolutions" width="100" />
+          <cell name="cat_allowpromote" width="100" />
           <cell name="cat_allowprofilecreation" width="100" />
           <cell name="cat_allowadvancedpromote" width="100" />
           <cell name="cat_allowadvanceddeploy" width="100" />
@@ -48,6 +49,7 @@
           <attribute name="cat_allowprofilecreation" />
           <attribute name="cat_allowmanagesolutions" />
           <attribute name="cat_allowbypassprepare" />
+          <attribute name="cat_allowpromote" />
         </entity>
       </fetch>
     </fetchxml>
