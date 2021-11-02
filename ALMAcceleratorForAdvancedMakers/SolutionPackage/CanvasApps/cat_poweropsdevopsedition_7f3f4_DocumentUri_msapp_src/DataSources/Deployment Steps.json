@@ -22,6 +22,8 @@
       "cat_deploymentstep_ProcessSession": "Process Sessions",
       "cat_deploymentstep_SyncErrors": "Sync Errors",
       "cat_deploymentstepid": "Deployment Step",
+      "cat_deploysourcebranchname": "Deploy Source Branch Name",
+      "cat_deploytargetbranchname": "Deploy Target Branch Name",
       "cat_name": "Name",
       "cat_PrerequisiteStepId": "Prerequisite Step",
       "cat_stepnumber": "Step Number",

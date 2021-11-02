@@ -102,7 +102,7 @@
       "defaultfilterspopulated": "Default Filters Populated",
       "defaultmailbox": "Mailbox",
       "defaultodbfoldername": "Default OneDrive for Business Folder Name",
-      "deletedstate": "DeletedState",
+      "deletedstate": "Deleted State",
       "disabledreason": "Disabled Reason",
       "displayinserviceviews": "Display in Service Views",
       "domainname": "User Name",
@@ -302,6 +302,10 @@
       "lk_admin_portal_createdonbehalfby": "Power Apps Portals (lk_admin_portal_createdonbehalfby)",
       "lk_admin_portal_modifiedby": "Power Apps Portals (lk_admin_portal_modifiedby)",
       "lk_admin_portal_modifiedonbehalfby": "Power Apps Portals (lk_admin_portal_modifiedonbehalfby)",
+      "lk_admin_portalsitesettings_createdby": "Portal Site Settings (lk_admin_portalsitesettings_createdby)",
+      "lk_admin_portalsitesettings_createdonbehalfby": "Portal Site Settings (lk_admin_portalsitesettings_createdonbehalfby)",
+      "lk_admin_portalsitesettings_modifiedby": "Portal Site Settings (lk_admin_portalsitesettings_modifiedby)",
+      "lk_admin_portalsitesettings_modifiedonbehalfby": "Portal Site Settings (lk_admin_portalsitesettings_modifiedonbehalfby)",
       "lk_admin_powerplatformuser_createdby": "Power Platform Users (lk_admin_powerplatformuser_createdby)",
       "lk_admin_powerplatformuser_createdonbehalfby": "Power Platform Users (lk_admin_powerplatformuser_createdonbehalfby)",
       "lk_admin_powerplatformuser_modifiedby": "Power Platform Users (lk_admin_powerplatformuser_modifiedby)",
@@ -1545,6 +1549,7 @@
       "user_admin_maker": "Makers (user_admin_maker)",
       "user_admin_makerassessmentcategory": "Assessment Categories (user_admin_makerassessmentcategory)",
       "user_admin_portal": "Power Apps Portals (user_admin_portal)",
+      "user_admin_portalsitesettings": "Portal Site Settings (user_admin_portalsitesettings)",
       "user_admin_powerplatformuser": "Power Platform Users (user_admin_powerplatformuser)",
       "user_admin_powerplatformuserrole": "Power Platform User Roles (user_admin_powerplatformuserrole)",
       "user_admin_pva": "PVAs (user_admin_pva)",
@@ -1905,7 +1910,7 @@
     "Type": "OptionSetInfo"
   },
   {
-    "DisplayName": "DeletedState (Users)",
+    "DisplayName": "Deleted State (Users)",
     "Name": "systemuser_deletestate",
     "OptionSetInfoNameMapping": {
       "0": "Not deleted",

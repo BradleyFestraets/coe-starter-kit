@@ -1,12 +1,12 @@
 ﻿{
   "properties": {
     "connectionReferences": {
-      "shared_webcontents": {
+      "shared_webcontents_1": {
         "api": {
           "name": "shared_webcontents"
         },
         "connection": {
-          "connectionReferenceLogicalName": "cat_sharedwebcontents_74512"
+          "connectionReferenceLogicalName": "cat_sharedwebcontents_0df3a"
         },
         "runtimeSource": "invoker"
       }
@@ -19,12 +19,12 @@
             "authentication": "@parameters('$authentication')",
             "host": {
               "apiId": "/providers/Microsoft.PowerApps/apis/shared_webcontents",
-              "connectionName": "shared_webcontents",
+              "connectionName": "shared_webcontents_1",
               "operationId": "InvokeHttp"
             },
             "parameters": {
               "request/method": "GET",
-              "request/url": "https://graph.microsoft.com/v1.0/sites?search=*&$select=displayName,webUrl,id,name"
+              "request/url": "https://graph.microsoft.com/v1.0/sites?search=@{triggerBody()['text']} OR \tsite:@{triggerBody()['text_1']}&$select=displayName,webUrl,id,name"
             }
           },
           "runAfter": {},
@@ -93,7 +93,22 @@
         "manual": {
           "inputs": {
             "schema": {
-              "properties": {},
+              "properties": {
+                "text": {
+                  "description": "Please enter your input",
+                  "title": "SearchText",
+                  "type": "string",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
+                },
+                "text_1": {
+                  "description": "Please enter your input",
+                  "title": "CurrentSiteUrl",
+                  "type": "string",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
+                }
+              },
               "required": [],
               "type": "object"
             }

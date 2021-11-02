@@ -21,9 +21,9 @@
                                           "activateAsUser":  "#{activateflow.activateas.GetSolutionFlows.b4705964-b409-ec11-b6e6-000d3a9c5165}#"
                                       },
                                       {
-                                          "solutionComponentName":  "GetSharepointSites",
+                                          "solutionComponentName":  "SearchSharepointSites",
                                           "solutionComponentUniqueName":  "be3e8c42-cf09-ec11-b6e6-000d3a9c5165",
-                                          "activateAsUser":  "#{activateflow.activateas.GetSharepointSites.be3e8c42-cf09-ec11-b6e6-000d3a9c5165}#"
+                                          "activateAsUser":  "#{activateflow.activateas.SearchSharepointSites.be3e8c42-cf09-ec11-b6e6-000d3a9c5165}#"
                                       },
                                       {
                                           "solutionComponentName":  "GetSharepointLists",
@@ -88,9 +88,9 @@
                                                     },
                                                     {
                                                         "solutionComponentType":  29,
-                                                        "solutionComponentName":  "GetSharepointSites",
+                                                        "solutionComponentName":  "SearchSharepointSites",
                                                         "solutionComponentUniqueName":  "be3e8c42-cf09-ec11-b6e6-000d3a9c5165",
-                                                        "ownerEmail":  "#{owner.ownerEmail.GetSharepointSites.be3e8c42-cf09-ec11-b6e6-000d3a9c5165}#"
+                                                        "ownerEmail":  "#{owner.ownerEmail.SearchSharepointSites.be3e8c42-cf09-ec11-b6e6-000d3a9c5165}#"
                                                     },
                                                     {
                                                         "solutionComponentType":  29,

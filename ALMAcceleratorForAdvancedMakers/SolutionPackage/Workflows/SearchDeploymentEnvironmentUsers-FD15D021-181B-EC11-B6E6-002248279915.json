@@ -445,13 +445,6 @@
                   "x-ms-content-hint": "TEXT",
                   "x-ms-dynamically-added": true
                 },
-                "text_2": {
-                  "description": "ID of the Solution",
-                  "title": "Solution ID",
-                  "type": "string",
-                  "x-ms-content-hint": "TEXT",
-                  "x-ms-dynamically-added": true
-                },
                 "text_3": {
                   "description": "Search Text",
                   "title": "Search Text",
@@ -469,10 +462,7 @@
               },
               "required": [
                 "text",
-                "text_1",
-                "text_2",
-                "text_3",
-                "text_4"
+                "text_1"
               ],
               "type": "object"
             }

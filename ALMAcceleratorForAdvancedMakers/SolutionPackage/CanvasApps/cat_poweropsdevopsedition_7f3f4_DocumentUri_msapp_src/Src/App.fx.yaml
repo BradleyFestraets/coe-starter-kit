@@ -26,10 +26,6 @@ App As appinfo:
             ApplicationName,
             "ALMAcceleratorForAdvancedMakers"
         );
-        Set(ExecutingEnvironment,
-         GetEnvironmentId.Run()
-        );
-        
         ClearCollect(
             StageStatesIcons,
             {

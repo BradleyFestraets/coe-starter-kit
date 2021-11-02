@@ -52,6 +52,7 @@
       "projectionmapping": true,
       "reactformulabar": false,
       "reliableconcurrent": true,
+      "rtlsupport": false,
       "usedisplaynamemetadata": true,
       "useenforcesavedatalimits": true,
       "useexperimentalcdsconnector": true,
@@ -92,7 +93,6 @@
   "ScreenOrder": [
     "Home",
     "DeploymentHistoryScreen",
-    "DeploymentSettingsScreen",
-    "Screen1"
+    "DeploymentSettingsScreen"
   ]
 }

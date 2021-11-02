@@ -15,6 +15,7 @@
           <cell name="cat_deploymentprofileid" width="100" />
           <cell name="cat_buildid" width="100" />
           <cell name="cat_deploymentstepid" width="100" />
+          <cell name="cat_sourcebranch" width="100" />
           <cell name="cat_targetbranch" width="100" />
           <cell name="createdon" width="125" />
           <cell name="createdby" width="100" />
@@ -37,6 +38,7 @@
           <attribute name="cat_targetbranch" />
           <attribute name="createdby" />
           <attribute name="cat_buildid" />
+          <attribute name="cat_sourcebranch" />
         </entity>
       </fetch>
     </fetchxml>

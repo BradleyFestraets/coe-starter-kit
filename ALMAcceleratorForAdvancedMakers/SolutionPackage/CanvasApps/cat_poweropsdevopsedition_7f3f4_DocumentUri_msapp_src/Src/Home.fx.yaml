@@ -160,23 +160,77 @@ Home As screen:
             HoverColor: =ColorFade(btnCreatePullRequest.Color, 20%)
             HoverFill: =ColorFade(btnCreatePullRequest.Fill, 20%)
             OnSelect: |
-                =UpdateContext(
-                    {
-                        showDialogOverlay: true
-                    }
+                =UpdateContext({showDialogOverlay: true});
+                If(
+                    IsBlankOrError(locBranchesDeploymentProfile) Or locBranchesDeploymentProfile.'Deployment Profile' <> glrSolutions.Selected.deploymentprofile.'Deployment Profile',
+                    UpdateContext(
+                        {
+                            locBranchesDeploymentProfile: LookUp(
+                                'Deployment Profiles',
+                                'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile'
+                            )
+                        }
+                    );
+                    ClearCollect(
+                        SelectedProjectRepos,
+                        CustomAzureDevOps.GetGitRepos(
+                            locBranchesDeploymentProfile.'AzDO Organization',
+                            locBranchesDeploymentProfile.'AzDO Project'
+                        ).value
+                    );
+                    Clear(SelectedRepoBranches);
+                    If(
+                        CountRows(
+                            Filter(
+                                SelectedProjectRepos,
+                                id = locBranchesDeploymentProfile.'Repository ID'
+                            )
+                        ) > 0,
+                        Collect(
+                            SelectedRepoBranches,
+                            AddColumns(
+                                Filter(
+                                    CustomAzureDevOps.GetBranches(
+                                        locBranchesDeploymentProfile.'AzDO Organization',
+                                        locBranchesDeploymentProfile.'AzDO Project',
+                                        locBranchesDeploymentProfile.'Repository ID'
+                                    ).value,
+                                    "refs/heads/" in name
+                                ),
+                                "DisplayName",
+                                Substitute(
+                                    name,
+                                    "refs/heads/",
+                                    ""
+                                )
+                            )
+                        )
+                    );
+                    SortByColumns(
+                        SelectedRepoBranches,
+                        "DisplayName"
+                    )
                 );
                 UpdateContext(
                     {
                         LastDeployRequest: First(
                             Filter(
-                                Sort(glrSolutions.Selected.deploymentrequests, 'Created On', Descending),
-                                'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User
+                                Sort(
+                                    glrSolutions.Selected.deploymentrequests,
+                                    'Created On',
+                                    Descending
+                                ),
+                                'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And 'Deployment Profile'.'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile'
                             )
                         ),
                         LastPublishRequest: First(
                             Filter(
-                                Sort(glrSolutions.Selected.deploymentrequests, 'Created On', Descending),
-                                'Request Type' = [@Type].Promote And 'Created By'.User = gblCdsUser.User
+                                Sort(
+                                    glrSolutions.Selected.deploymentrequests,
+                                    'Created On',
+                                    Descending
+                                ),
+                                'Request Type' = [@Type].Promote And 'Created By'.User = gblCdsUser.User And 'Deployment Profile'.'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile' And !IsBlankOrError('Source Branch')
                             )
                         )
                     }
@@ -192,7 +246,12 @@ Home As screen:
                             )
                         }
                     ),
-                    UpdateContext({locDefaultBranchForCommit: LastPublishRequest.'Target Branch'})
+                    UpdateContext(
+                        {
+                            locTargetBranchForPullRequest: LastPublishRequest.'Source Branch',
+                            locDefaultBranchForCommit: LastPublishRequest.'Target Branch'
+                        }
+                    )
                 );
                 If(
                     IsBlankOrError(LastDeployRequest) Or IsBlankOrError(LastDeployRequest.'Target Branch'),
@@ -205,11 +264,18 @@ Home As screen:
                             )
                         }
                     ),
-                    UpdateContext({locTargetBranchForPullRequest: LastDeployRequest.'Target Branch'})
+                    UpdateContext({locTargetBranchForPullRequest: LastDeployRequest.'Source Branch'})
                 );
-                
+                ClearCollect(
+                    SelectedProfileSteps,
+                    Filter(
+                        'Deployment Steps',
+                        'Deployment Profile'.'Deployment Profile' = locBranchesDeploymentProfile.'Deployment Profile'
+                    )
+                );
                 UpdateContext(
                     {
+                        selectedStep: First(SelectedProfileSteps).Name,
                         showPullRequestDialog: true
                     }
                 );
@@ -268,84 +334,106 @@ Home As screen:
             HoverColor: =ColorFade(btnCommitAndPush.Color, 20%)
             HoverFill: =ColorFade(btnCommitAndPush.Fill, 20%)
             OnSelect: |
-                =UpdateContext(
-                    {
-                        showDialogOverlay: true
-                    }
-                );
+                =UpdateContext({showDialogOverlay: true});
                 UpdateContext(
                     {
-                        LastPublishRequest: First(
+                        locLastPromoteRequest: First(
                             Filter(
                                 glrSolutions.Selected.deploymentrequests,
-                                'Request Type' = [@Type].Promote And 'Created By'.User = gblCdsUser.User
+                                'Request Type' = [@Type].Promote And 'Created By'.User = gblCdsUser.User And 'Deployment Profile'.'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile'
                             )
                         )
                     }
                 );
                 If(
-                    IsBlankOrError(LastPublishRequest) Or IsBlankOrError(LastPublishRequest.'Target Branch'),
+                    IsBlankOrError(locBranchesDeploymentProfile) Or locBranchesDeploymentProfile.'Deployment Profile' <> glrSolutions.Selected.deploymentprofile.'Deployment Profile',
                     UpdateContext(
                         {
-                            locDefaultBranchForCommit: LookUp(
-                                SelectedRepoBranches,
-                                glrSolutions.Selected.uniquename in DisplayName,
-                                DisplayName
+                            locBranchesDeploymentProfile: LookUp(
+                                'Deployment Profiles',
+                                'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile'
                             )
                         }
-                    ),
-                    UpdateContext({locDefaultBranchForCommit: LastPublishRequest.'Target Branch'})
-                );
-                ClearCollect(
-                    SelectedProjectRepos,
-                    CustomAzureDevOps.GetGitRepos(
-                        glrSolutions.Selected.deploymentprofile.'AzDO Organization',
-                        glrSolutions.Selected.deploymentprofile.'AzDO Project'
-                    ).value
-                );
-                Clear(SelectedRepoBranches);
-                If(
-                    CountRows(
-                        Filter(
-                            SelectedProjectRepos,
-                            id = glrSolutions.Selected.deploymentprofile.'Repository ID'
-                        )
-                    ) > 0,
-                    Collect(
-                        SelectedRepoBranches,
-                        AddColumns(
+                    );
+                    ClearCollect(
+                        SelectedProjectRepos,
+                        CustomAzureDevOps.GetGitRepos(
+                            locBranchesDeploymentProfile.'AzDO Organization',
+                            locBranchesDeploymentProfile.'AzDO Project'
+                        ).value
+                    );
+                    Clear(SelectedRepoBranches);
+                    If(
+                        CountRows(
                             Filter(
-                                CustomAzureDevOps.GetBranches(
-                                    glrSolutions.Selected.deploymentprofile.'AzDO Organization',
-                                    glrSolutions.Selected.deploymentprofile.'AzDO Project',
-                                    glrSolutions.Selected.deploymentprofile.'Repository ID'
-                                ).value,
-                                "refs/heads/" in name
-                            ),
-                            "DisplayName",
-                            Substitute(
-                                name,
-                                "refs/heads/",
-                                ""
+                                SelectedProjectRepos,
+                                id = locBranchesDeploymentProfile.'Repository ID'
+                            )
+                        ) > 0,
+                        Collect(
+                            SelectedRepoBranches,
+                            AddColumns(
+                                Filter(
+                                    CustomAzureDevOps.GetBranches(
+                                        locBranchesDeploymentProfile.'AzDO Organization',
+                                        locBranchesDeploymentProfile.'AzDO Project',
+                                        locBranchesDeploymentProfile.'Repository ID'
+                                    ).value,
+                                    "refs/heads/" in name
+                                ),
+                                "DisplayName",
+                                Substitute(
+                                    name,
+                                    "refs/heads/",
+                                    ""
+                                )
                             )
                         )
+                    );
+                    SortByColumns(
+                        SelectedRepoBranches,
+                        "DisplayName"
                     )
                 );
-                SortByColumns(
-                    SelectedRepoBranches,
-                    "DisplayName"
-                );
-                ClearCollect(
-                    SelectedProfileSteps,
-                    Filter(
-                        'Deployment Steps',
-                        'Deployment Profile'.'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile'
+                If(
+                    IsBlankOrError(locLastPromoteRequest) Or IsBlankOrError(locLastPromoteRequest.'Target Branch') Or IsBlankOrError(
+                        LookUp(
+                            SelectedRepoBranches,
+                            DisplayName = locLastPromoteRequest.'Target Branch'
+                        )
+                    ),
+                    UpdateContext(
+                        {
+                            locDefaultBranchForCommit: locBranchesDeploymentProfile.'Promote Target Branch Name',
+                            locNewBranchText: gblUser.Email & "-" & glrSolutions.Selected.uniquename
+                        }
+                    );
+                    If(
+                        IsBlankOrError(locDefaultBranchForCommit),
+                        UpdateContext(
+                            {
+                                locDefaultBranchForCommit: LookUp(
+                                    SelectedRepoBranches,
+                                    glrSolutions.Selected.uniquename in DisplayName,
+                                    DisplayName
+                                ),
+                                locNewBranchText: gblUser.Email & "-" & glrSolutions.Selected.uniquename
+                            }
+                        )
+                    );
+                    ,
+                    UpdateContext(
+                        {
+                            locNewBranchText: "",
+                            locDefaultBranchForCommit: locLastPromoteRequest.'Target Branch'
+                        }
                     )
                 );
+                Reset(tglCreateBranch);
+                Reset(txtBranchToCreate);
                 Reset(drpAdoBranches);
                 UpdateContext(
                     {
-                        selectedStep: First(SelectedProfileSteps).Name,
                         deploymentStage: "PREPARE",
                         showCommitDialog: true
                     }
@@ -937,38 +1025,42 @@ Home As screen:
             HoverFill: =ColorFade(icoDeploymentProfile.Fill, 20%)
             Icon: =
             OnSelect: |
-                =If(
+                =UpdateContext({showDialogOverlay: true});
+                If(
                     !IsBlankOrError(glrSolutions.Selected.deploymentprofile),
+                    If(
+                        SelectedDeploymentProfile.'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile',
+                        UpdateContext({projectRepoReload: false}),
+                        UpdateContext({projectRepoReload: true})
+                    );
                     UpdateContext({SelectedDeploymentProfile: glrSolutions.Selected.deploymentprofile}),
                     UpdateContext({SelectedDeploymentProfile: First('Deployment Profiles')})
                 );
-                
                 Set(
                     SelectedOrg,
                     First(Orgs)
                 );
-                
+                If(projectRepoReload,
                 ClearCollect(
                     SelectedOrgProjects,
                     CustomAzureDevOps.GetProjects(SelectedOrg.AccountName).value
+                );
                 );
                 Set(
                     SelectedProject,
                     First(SelectedOrgProjects)
                 );
-                
+                If(projectRepoReload,
                 ClearCollect(
                     SelectedProjectRepos,
                     CustomAzureDevOps.GetGitRepos(
                         SelectedOrg.AccountName,
                         SelectedProject.name
                     ).value
-                );
-                
+                ));
                 UpdateContext(
                     {
                         locAddNewProfile: false,
-                        showDialogOverlay: true,
                         showDeploymentProfileDialog: true
                     }
                 );
@@ -1372,7 +1464,7 @@ Home As screen:
                     Reset(tglCreateBranch);
                     Reset(txtCommitMessage);
                     Reset(txtBranchToCreate);
-                    UpdateContext({locStartCheckBuildStatusTimer: false});
+                    UpdateContext({locDefaultBranchForCommit: "", locNewBranchText: "", locStartCheckBuildStatusTimer: false});
                     Reset(tmrCheckBuildAndPullRequestStatuses);
                     UpdateContext({locStartCheckBuildStatusTimer: true});
                     
@@ -1443,13 +1535,15 @@ Home As screen:
 
         tglCreateBranch As toggleSwitch:
             AccessibleLabel: ="Create New Branch"
+            Default: =!IsBlankOrError(locNewBranchText)
             FalseFill: =RGBA(237, 237, 237, 1)
             FalseHoverFill: =ColorFade(tglCreateBranch.FalseFill, 20%)
             FalseText: ="Create New Branch"
             FontWeight: =FontWeight.Semibold
             HandleFill: =If(tglCreateBranch.Value, PrimaryColor1Value, PrimaryColor2Value)
             HoverBorderColor: =ColorFade(tglCreateBranch.BorderColor, 20%)
-            OnChange: =Set(locNewBranchText,  ""); Reset(txtBranchToCreate);
+            OnChange: |-
+                =UpdateContext({ locNewBranchText:  ""}); Reset(txtBranchToCreate);
             PressedBorderColor: =ColorFade(tglCreateBranch.BorderColor, -20%)
             TrueHoverFill: =ColorFade(tglCreateBranch.TrueFill, 20%)
             TrueText: ="Create New Branch"
@@ -1588,7 +1682,12 @@ Home As screen:
 
         tglPublishAdvancedSettings As toggleSwitch:
             AccessibleLabel: ="Show Advanced"
-            Default: =true
+            Default: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Advanced Deploy') Or DeploymentUserSetting.'Advanced Deploy' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
             FalseFill: =RGBA(237, 237, 237, 1)
             FalseHoverFill: =ColorFade(tglPublishAdvancedSettings.FalseFill, 20%)
             FalseText: ="Show Advanced"
@@ -1599,6 +1698,12 @@ Home As screen:
             PressedBorderColor: =ColorFade(tglPublishAdvancedSettings.BorderColor, -20%)
             TrueHoverFill: =ColorFade(tglPublishAdvancedSettings.TrueFill, 20%)
             TrueText: ="Show Advanced"
+            Visible: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Advanced Promote') Or DeploymentUserSetting.'Advanced Promote' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
             Width: =200
             X: =30
             Y: =336
@@ -1738,7 +1843,7 @@ Home As screen:
                                     PipelineId: {value: ""},
                                     ImportUnmanaged: {value: "true"},
                                     EnvironmentName: {value: drpConfigFolders.Selected.DisplayName},
-                                    Data: {value: "{test: """"}"}
+                                    Data: {value: ""}
                                 }
                             }
                         ).id
@@ -2232,7 +2337,7 @@ Home As screen:
         imgImportStatus As image:
             BorderColor: =ColorFade(imgImportStatus.Fill, -20%)
             DisplayMode: =DisplayMode.View
-            Height: =48
+            Height: =55
             HoverBorderColor: =ColorFade(imgImportStatus.BorderColor, 20%)
             HoverFill: =ColorFade(imgImportStatus.Fill, 20%)
             Image: |-
@@ -2266,9 +2371,9 @@ Home As screen:
                     true,
                     false
                 )
-            Width: =50
-            X: =414
-            Y: =90
+            Width: =55
+            X: =410
+            Y: =87
             ZIndex: =10
 
         icoImportStatus As icon.Add:
@@ -2906,7 +3011,12 @@ Home As screen:
 
         tglPRAdvancedSettings As toggleSwitch:
             AccessibleLabel: ="Advanced Settings"
-            Default: =true
+            Default: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Advanced Deploy') Or DeploymentUserSetting.'Advanced Deploy' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
             FalseFill: =RGBA(237, 237, 237, 1)
             FalseHoverFill: =ColorFade(tglPRAdvancedSettings.FalseFill, 20%)
             FalseText: ="Advanced Settings"
@@ -2917,6 +3027,12 @@ Home As screen:
             PressedBorderColor: =ColorFade(tglPRAdvancedSettings.BorderColor, -20%)
             TrueHoverFill: =ColorFade(tglPRAdvancedSettings.TrueFill, 20%)
             TrueText: ="Advanced Settings"
+            Visible: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Advanced Deploy') Or DeploymentUserSetting.'Advanced Deploy' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
             Width: =225
             X: =31
             Y: =436
@@ -3429,7 +3545,11 @@ Home As screen:
             HoverColor: =ColorFade(btnSavePublishProfile.Color, 20%)
             HoverFill: =ColorFade(btnSavePublishProfile.Fill, 20%)
             OnSelect: |
-                =UpdateContext({locSelectedProfile: drpProfileDeploymentProfiles.Selected});
+                =If(
+                    drpProfileDeploymentProfiles.Selected.DisplayName = "",
+                    UpdateContext({locSelectedProfile: Blank()}),
+                    UpdateContext({locSelectedProfile: drpProfileDeploymentProfiles.Selected})
+                );
                 If(
                     locAddNewProfile,
                     Patch(
@@ -3443,20 +3563,20 @@ Home As screen:
                         }
                     );
                     Relate(
-                        First('Deployment User Settings').'Deployment Profiles',
+                        DeploymentUserSetting.'Deployment Profiles',
                         LookUp(
                             'Deployment Profiles',
                             Name = txtNewProfile.Text
                         )
                     );
-                ClearCollect(
-                    DeploymentProfiles,
-                    AddColumns(
-                        DeploymentUserSetting.'Deployment Profiles',
-                        "DisplayName",
-                        Name
-                    )
-                );    
+                    ClearCollect(
+                        DeploymentProfiles,
+                        AddColumns(
+                            DeploymentUserSetting.'Deployment Profiles',
+                            "DisplayName",
+                            Name
+                        )
+                    );
                     UpdateContext(
                         {
                             locSelectedProfile: LookUp(
@@ -3501,14 +3621,14 @@ Home As screen:
             Y: =1020
             ZIndex: =36
 
-        icoDeployClose_2 As icon.Cancel:
+        icoDeployAddProfile As icon.Cancel:
             AccessibleLabel: ="Close"
-            BorderColor: =ColorFade(icoDeployClose_2.Fill, -20%)
-            DisabledFill: =ColorFade(icoDeployClose_2.Fill, -80%)
+            BorderColor: =ColorFade(icoDeployAddProfile.Fill, -20%)
+            DisabledFill: =ColorFade(icoDeployAddProfile.Fill, -80%)
             Height: =55
-            HoverBorderColor: =ColorFade(icoDeployClose_2.BorderColor, 20%)
-            HoverColor: =ColorFade(icoDeployClose_2.Color, 20%)
-            HoverFill: =ColorFade(icoDeployClose_2.Fill, 20%)
+            HoverBorderColor: =ColorFade(icoDeployAddProfile.BorderColor, 20%)
+            HoverColor: =ColorFade(icoDeployAddProfile.Color, 20%)
+            HoverFill: =ColorFade(icoDeployAddProfile.Fill, 20%)
             Icon: =If(locAddNewProfile, Icon.Cancel, Icon.Add)
             OnSelect: |
                 =UpdateContext({locAddNewProfile: !locAddNewProfile});
@@ -3534,9 +3654,15 @@ Home As screen:
             PaddingLeft: =10
             PaddingRight: =10
             PaddingTop: =10
-            PressedBorderColor: =ColorFade(icoDeployClose_2.BorderColor, -20%)
-            PressedColor: =ColorFade(icoDeployClose_2.Color, -20%)
-            PressedFill: =ColorFade(icoDeployClose_2.Fill, -20%)
+            PressedBorderColor: =ColorFade(icoDeployAddProfile.BorderColor, -20%)
+            PressedColor: =ColorFade(icoDeployAddProfile.Color, -20%)
+            PressedFill: =ColorFade(icoDeployAddProfile.Fill, -20%)
+            Visible: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Profile Creation') Or DeploymentUserSetting.'Profile Creation' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
             Width: =55
             X: =486
             Y: =130
@@ -3730,7 +3856,7 @@ Home As screen:
             HoverFill: =ColorFade(fncRefreshStatuses.Fill, 20%)
             OnSelect: |
                 =If(
-                    !showLoader,
+                    !statusesLoading,
                     Clear(TempSelectedEnvironmentSolutions);
                     If(
                         Not IsBlank(SelectedEnvironment.properties.linkedEnvironmentMetadata.uniqueName),
@@ -3781,6 +3907,20 @@ Home As screen:
                     )
                 );
                 Clear(TempSelectedEnvironmentSolutions);
+                ClearCollect(
+                    ProfileBuilds,
+                    ForAll(
+                        DeploymentProfiles,
+                        {
+                            Builds: CustomAzureDevOps.GetBuilds(
+                                'AzDO Organization',
+                                'AzDO Project',
+                                {queryOrder: "queueTimeDescending"}
+                            ).value,
+                            Profile: 'Deployment Profile'
+                        }
+                    )
+                );
                 UpdateContext(
                     {
                         locImportingSolutionBuildRequest: First(
@@ -3792,29 +3932,33 @@ Home As screen:
                     }
                 );
                 UpdateContext({locImportingSolutionProfile: locImportingSolutionBuildRequest.'Deployment Profile'});
-                UpdateContext(
-                    {
-                        locImportSolutionStatus: If(
-                            !IsBlankOrError(locImportingSolutionProfile) And !IsBlankOrError(locImportingSolutionBuildRequest.'Build ID'),
-                            CustomAzureDevOps.GetBuild(
-                                locImportingSolutionProfile.'AzDO Organization',
-                                locImportingSolutionProfile.'AzDO Project',
-                                locImportingSolutionBuildRequest.'Build ID'
-                            )
-                        )
-                    }
-                );
                 If(
-                    locImportSolutionStatus.status = "completed",
-                    Patch(
-                        'Deployment Requests',
-                        locImportingSolutionBuildRequest,
+                    !IsBlankOrError(locImportingSolutionProfile),
+                    UpdateContext(
                         {
-                            Status: 'Status (Deployment Requests)'.Inactive,
-                            'Status Reason': 'Status Reason (Deployment Requests)'.Completed
+                            locImportSolutionStatus: If(
+                                !IsBlankOrError(locImportingSolutionProfile) And !IsBlankOrError(locImportingSolutionBuildRequest.'Build ID'),
+                                LookUp(
+                                    LookUp(
+                                        ProfileBuilds,
+                                        Profile = locImportingSolutionProfile.'Deployment Profile'
+                                    ).Builds,
+                                    Text(id) = locImportingSolutionBuildRequest.'Build ID'
+                                )
+                            )
                         }
                     );
-                    
+                    If(
+                        !IsBlankOrError(locImportSolutionStatus) && locImportSolutionStatus.status = "completed",
+                        Patch(
+                            'Deployment Requests',
+                            locImportingSolutionBuildRequest,
+                            {
+                                Status: 'Status (Deployment Requests)'.Inactive,
+                                'Status Reason': 'Status Reason (Deployment Requests)'.Completed
+                            }
+                        );
+                    )
                 );
                 ClearCollect(
                     DeleteDeploymentRequests,
@@ -3826,10 +3970,12 @@ Home As screen:
                 ForAll(
                     DeleteDeploymentRequests As dr,
                     If(
-                        CustomAzureDevOps.GetBuild(
-                            dr.'Deployment Profile'.'AzDO Organization',
-                            dr.'Deployment Profile'.'AzDO Project',
-                            dr.'Build ID'
+                        LookUp(
+                            LookUp(
+                                ProfileBuilds,
+                                Profile = dr.'Deployment Profile'.'Deployment Profile'
+                            ).Builds,
+                            Text(id) = dr.'Build ID'
                         ).status = "completed",
                         Patch(
                             'Deployment Requests',
@@ -3869,10 +4015,12 @@ Home As screen:
                         "BuildStatus",
                         If(
                             !IsBlankOrError('Deployment Profile') And !IsBlankOrError('Deployment Profile'.'AzDO Organization') And !IsBlankOrError('Deployment Profile'.'AzDO Project') And !IsBlankOrError('Build ID') And 'Request Type' <> [@Type].Deploy,
-                            CustomAzureDevOps.GetBuild(
-                                'Deployment Profile'.'AzDO Organization',
-                                'Deployment Profile'.'AzDO Project',
-                                'Build ID'
+                            LookUp(
+                                LookUp(
+                                    ProfileBuilds,
+                                    Profile = 'Deployment Profile'.'Deployment Profile'
+                                ).Builds,
+                                Text(id) = 'Build ID'
                             );
                         ),
                         "PullRequestStatus",
@@ -4059,6 +4207,13 @@ Home As screen:
                     }
                 );
                 UpdateContext({locStartCheckBuildStatusTimer: false});
+                If(
+                    IsBlankOrError(ExecutingEnvironment),
+                    Set(
+                        ExecutingEnvironment,
+                        GetEnvironmentId.Run()
+                    )
+                );
                 //Set Global user, Global CDS user and get App User Settings
                 Set(
                     gblUser,
@@ -4071,6 +4226,13 @@ Home As screen:
                         domainname = gblUser.Email
                     )
                 );
+                If(
+                    IsEmpty('Deployment User Settings'),
+                    Patch(
+                        'Deployment User Settings',
+                        {Name: gblUser.Email & " - Default Settings"}
+                    )
+                );
                 Set(
                     DeploymentUserSetting,
                     First('Deployment User Settings')
@@ -4081,6 +4243,17 @@ Home As screen:
                         DeploymentUserSetting.'Deployment Profiles',
                         "DisplayName",
                         Name
+                    )
+                );
+                Collect(
+                    DeploymentProfiles,
+                    {DisplayName: ""}
+                );
+                ClearCollect(
+                    DeploymentProfiles,
+                    Sort(
+                        DeploymentProfiles,
+                        DisplayName
                     )
                 );
                 // Get user settings for this App.   
@@ -4129,25 +4302,6 @@ Home As screen:
                         PowerAppsforMakers.GetEnvironments().value,
                         DisplayName
                     )
-                );
-                // Parse the CSV and get it into the LastSavedPullRequests / LastSavedExportToGitPipelineRuns  / LastSavedBranchesCreated collections 
-                If(
-                    !IsBlank(Param("configsoln")) && !IsBlank(Param("env")),
-                    Set(
-                        SelectedEnvironment,
-                        LookUp(
-                            AllEnvironments,
-                            name = Param("env")
-                        )
-                    );
-                    Set(
-                        SelectedSolutionToConfigure,
-                        LookUp(
-                            SelectedEnvironmentSolutions,
-                            Text(solutionid) = Param("configsoln")
-                        )
-                    );
-                    Navigate(DeploymentSettingsScreen)
                 );
                 Set(
                     DefaultEnvironmentSettingName,
@@ -4240,33 +4394,40 @@ Home As screen:
                     SelectedEnvironmentSolutions,
                     TempSelectedEnvironmentSolutions
                 );
+                // Parse the CSV and get it into the LastSavedPullRequests / LastSavedExportToGitPipelineRuns  / LastSavedBranchesCreated collections 
+                If(
+                    !IsBlank(Param("configsoln")) && !IsBlank(Param("env")) && !IsBlank(Param("profile")) && !IsBlank(Param("step")),
+                    Set(
+                        SelectedEnvironment,
+                        LookUp(
+                            AllEnvironments,
+                            name = Param("env")
+                        )
+                    );
+                    Set(
+                        SelectedSolutionToConfigure,
+                        LookUp(
+                            SelectedEnvironmentSolutions,
+                            solutionid = Param("configsoln")
+                        )
+                    );
+                    Set(
+                        SelectedDeploymentProfile,
+                        LookUp(
+                            DeploymentProfiles,
+                            'Deployment Profile' = GUID(Param("profile"))
+                        )
+                    );
+                    Set(
+                        SelectedDeploymentStep,
+                        LookUp(
+                            SelectedDeploymentProfile.'Deployment Steps',
+                            'Deployment Step' = GUID(Param("step"))
+                        )
+                    );
+                    Navigate(DeploymentSettingsScreen)
+                );
                 UpdateContext({showLoader: false});
-                ClearCollect(
-                    SharepointSites,
-                    GetSharepointSites.Run().value
-                );
-                Collect(
-                    SharepointSites,
-                    {webUrl: ""}
-                );
-                ClearCollect(
-                    SharepointSites,
-                    Sort(
-                        SharepointSites,
-                        webUrl
-                    )
-                );
-                Collect(
-                    AADGroups,
-                    {name: ""}
-                );
-                ClearCollect(
-                    AADGroups,
-                    Sort(
-                        AADGroups,
-                        name
-                    )
-                );
                 Select(fncRefreshStatuses);
             PressedBorderColor: =fncInitializeHome.Fill
             PressedColor: =fncInitializeHome.Fill

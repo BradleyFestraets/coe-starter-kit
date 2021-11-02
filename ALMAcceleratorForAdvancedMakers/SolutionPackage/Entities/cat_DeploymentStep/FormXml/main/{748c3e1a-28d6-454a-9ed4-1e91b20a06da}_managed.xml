@@ -28,6 +28,14 @@
                       </cell>
                     </row>
                     <row>
+                      <cell id="{fd7e5a4f-8fe8-46eb-b6e0-a10985857094}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="Deployment Profile" languagecode="1033" />
+                        </labels>
+                        <control id="cat_deploymentprofileid" classid="{270BD3DB-D9AF-4782-9025-509E298DEC0A}" datafieldname="cat_deploymentprofileid" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
                       <cell id="{9c23e7a6-4728-44d4-a8d6-7a63beb63bce}" locklevel="0" colspan="1" rowspan="1">
                         <labels>
                           <label description="Step Number" languagecode="1033" />
@@ -49,9 +57,25 @@
                       </cell>
                     </row>
                     <row>
+                      <cell id="{547f7d28-4e64-4cc3-9144-82e4ec59afca}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="Source Branch" languagecode="1033" />
+                        </labels>
+                        <control id="cat_deploysourcebranchname" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="cat_deploysourcebranchname" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
+                      <cell id="{62800a79-0dd3-426e-bfa1-1db4df120703}" locklevel="0" colspan="1" rowspan="1">
+                        <labels>
+                          <label description="Target Branch" languagecode="1033" />
+                        </labels>
+                        <control id="cat_deploytargetbranchname" classid="{4273EDBD-AC1D-40D3-9FB2-095C621B552D}" datafieldname="cat_deploytargetbranchname" disabled="false" />
+                      </cell>
+                    </row>
+                    <row>
                       <cell locklevel="0" id="{90cc0f78-ef7f-4ddf-90b0-790f5829597e}" rowspan="1" colspan="1">
                         <labels>
-                          <label description="" languagecode="1033" />
+                          <label description="Deployment Steps" languagecode="1033" />
                         </labels>
                         <control id="Prerequisites" classid="{E7A81278-8635-4D9E-8D4D-59480B391C5B}" indicationOfSubgrid="true">
                           <parameters>
