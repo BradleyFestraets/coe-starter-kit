@@ -1481,7 +1481,7 @@ Home As screen:
                     Patch(
                         'Deployment Requests',
                         {
-                            Name: glrSolutions.Selected.friendlyname & " - Publish (" & Text(
+                            Name: glrSolutions.Selected.friendlyname & " - Promote (" & Text(
                                 Now(),
                                 ShortDateTime
                             ) & ")",
@@ -4507,24 +4507,6 @@ Home As screen:
         Visible: =false
         X: =490
         ZIndex: =36
-
-    Button1 As button:
-        HoverBorderColor: =ColorFade(Button1.BorderColor, 20%)
-        HoverColor: =ColorFade(Button1.Color, 20%)
-        HoverFill: =ColorFade(Button1.Fill, 20%)
-        OnSelect: |-
-            =Set(
-                DeploymentUserSetting,
-                First('Deployment User Settings')
-            );
-        PressedBorderColor: =Button1.Fill
-        PressedColor: =Button1.Fill
-        PressedFill: =Button1.Color
-        Text: ="Refresh Settings"
-        Width: =200
-        X: =20
-        Y: =13
-        ZIndex: =38
 
     grpManageSolutions As group:
         Height: =5
