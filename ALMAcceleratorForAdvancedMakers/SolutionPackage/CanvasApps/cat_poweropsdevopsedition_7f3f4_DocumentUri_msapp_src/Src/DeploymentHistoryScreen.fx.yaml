@@ -153,7 +153,7 @@ DeploymentHistoryScreen As screen:
             Image: |-
                 =//ExportToGitStatus has two outputs - status and result which are used inter variably. 
                 If(
-                    ThisItem.RequestType = [@Type].Deploy,
+                    ThisItem.RequestType = [@Type].Deploy And !IsBlankOrError(ThisItem.'Source Branch'),
                     Switch(
                         ThisItem.PullRequestStatus.status,
                         "active",
@@ -232,7 +232,7 @@ DeploymentHistoryScreen As screen:
             OnSelect: |
                 =Select(Parent);
                 If(
-                    ThisItem.RequestType = [@Type].Deploy,
+                    ThisItem.RequestType = [@Type].Deploy And !IsBlankOrError(ThisItem.'Source Branch'),
                     Launch("https://dev.azure.com/" & ThisItem.'Deployment Profile'.'AzDO Organization' & "/" & ThisItem.'Deployment Profile'.'AzDO Project' & "/_git/" & ThisItem.'Deployment Profile'.Repository & "/pullrequest/" & ThisItem.'Build ID'),
                     Launch(ThisItem.BuildStatus._links.web.href)
                 );

@@ -224,7 +224,7 @@ Home As screen:
                                     'Created On',
                                     Descending
                                 ),
-                                'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And 'Deployment Profile'.'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile'
+                                'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And 'Deployment Profile'.'Deployment Profile' = locBranchesDeploymentProfile.'Deployment Profile'
                             )
                         ),
                         LastPublishRequest: First(
@@ -234,41 +234,54 @@ Home As screen:
                                     'Created On',
                                     Descending
                                 ),
-                                'Request Type' = [@Type].Promote And 'Created By'.User = gblCdsUser.User And 'Deployment Profile'.'Deployment Profile' = glrSolutions.Selected.deploymentprofile.'Deployment Profile' And !IsBlankOrError('Source Branch')
+                                'Request Type' = [@Type].Promote And 'Created By'.User = gblCdsUser.User And 'Deployment Profile'.'Deployment Profile' = locBranchesDeploymentProfile.'Deployment Profile' And !IsBlankOrError('Source Branch')
                             )
                         )
                     }
                 );
                 If(
-                    IsBlankOrError(LastPublishRequest) Or IsBlankOrError(LastPublishRequest.'Target Branch'),
-                    UpdateContext(
-                        {
-                            locDefaultBranchForCommit: LookUp(
-                                SelectedRepoBranches,
-                                glrSolutions.Selected.uniquename in DisplayName,
-                                DisplayName
-                            )
-                        }
+                    !IsBlankOrError(LastPublishRequest) And !IsBlankOrError(LastPublishRequest.'Target Branch') And !IsBlankOrError(LastPublishRequest.'Source Branch') And !IsBlankOrError(
+                        LookUp(
+                            SelectedRepoBranches,
+                            DisplayName = LastPublishRequest.'Source Branch'
+                        )
+                    ) And !IsBlankOrError(
+                        LookUp(
+                            SelectedRepoBranches,
+                            DisplayName = LastPublishRequest.'Target Branch'
+                        )
                     ),
                     UpdateContext(
                         {
                             locTargetBranchForPullRequest: LastPublishRequest.'Source Branch',
                             locDefaultBranchForCommit: LastPublishRequest.'Target Branch'
                         }
-                    )
-                );
-                If(
-                    IsBlankOrError(LastDeployRequest) Or IsBlankOrError(LastDeployRequest.'Target Branch'),
-                    UpdateContext(
-                        {
-                            locTargetBranchForPullRequest: LookUp(
-                                SelectedRepoBranches,
-                                glrSolutions.Selected.uniquename in DisplayName,
-                                DisplayName
-                            )
-                        }
                     ),
-                    UpdateContext({locTargetBranchForPullRequest: LastDeployRequest.'Source Branch'})
+                    If(
+                        !IsBlankOrError(LastDeployRequest) And !IsBlankOrError(LastDeployRequest.'Target Branch') And !IsBlankOrError(LastDeployRequest.'Source Branch') And !IsBlankOrError(
+                            LookUp(
+                                SelectedRepoBranches,
+                                DisplayName = LastDeployRequest.'Source Branch'
+                            )
+                        ) And !IsBlankOrError(
+                            LookUp(
+                                SelectedRepoBranches,
+                                DisplayName = LastDeployRequest.'Target Branch'
+                            )
+                        ),
+                        UpdateContext(
+                            {
+                                locTargetBranchForPullRequest: LastDeployRequest.'Target Branch',
+                                locDefaultBranchForCommit: LastDeployRequest.'Source Branch'
+                            }
+                        ),
+                        UpdateContext(
+                            {
+                                locTargetBranchForPullRequest: locBranchesDeploymentProfile.'Promote Target Branch Name',
+                                locDefaultBranchForCommit: gblUser.Email & "-" & glrSolutions.Selected.uniquename
+                            }
+                        )
+                    )
                 );
                 ClearCollect(
                     SelectedProfileSteps,
@@ -280,6 +293,7 @@ Home As screen:
                 UpdateContext(
                     {
                         selectedStep: First(SelectedProfileSteps).Name,
+                        deployStage: "PREPARE",
                         showPullRequestDialog: true
                     }
                 );
@@ -446,7 +460,7 @@ Home As screen:
                 Reset(drpAdoBranches);
                 UpdateContext(
                     {
-                        deploymentStage: "PREPARE",
+                        promoteStage: "PREPARE",
                         showCommitDialog: true
                     }
                 );
@@ -454,7 +468,7 @@ Home As screen:
             PressedColor: =btnCommitAndPush.Fill
             PressedFill: =btnCommitAndPush.Color
             Size: =11
-            Text: ="PROMOTE SOLUTION"
+            Text: ="PROMOTE CHANGES"
             Visible: |-
                 =If(
                     IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Promote Solutions') Or DeploymentUserSetting.'Promote Solutions' = 'A Yes or No boolean'.Allowed,
@@ -602,30 +616,68 @@ Home As screen:
                 =If(
                     statusesLoading,
                     'loading-buffering',
-                    Switch(
-                        LookUp(
-                            SolutionsLatestBuildStatuses,
-                            uniquename = ThisItem.uniquename
-                        ).pullRequestStatus.status,
-                        "active",
-                        LookUp(
-                            StageStatesIcons,
-                            state = "notStarted"
-                        ).image,
-                        "completed",
-                        LookUp(
-                            StageStatesIcons,
-                            state = "succeeded"
-                        ).image,
-                        "abandoned",
-                        LookUp(
-                            StageStatesIcons,
-                            state = "failed"
-                        ).image,
-                        LookUp(
-                            StageStatesIcons,
-                            state = "empty"
-                        ).image
+                    If(
+                        !IsBlankOrError(
+                            LookUp(
+                                SolutionsLatestBuildStatuses,
+                                uniquename = ThisItem.uniquename
+                            ).pullRequestStatus
+                        ),
+                        Switch(
+                            LookUp(
+                                SolutionsLatestBuildStatuses,
+                                uniquename = ThisItem.uniquename
+                            ).pullRequestStatus.status,
+                            "active",
+                            LookUp(
+                                StageStatesIcons,
+                                state = "notStarted"
+                            ).image,
+                            "completed",
+                            LookUp(
+                                StageStatesIcons,
+                                state = "succeeded"
+                            ).image,
+                            "abandoned",
+                            LookUp(
+                                StageStatesIcons,
+                                state = "failed"
+                            ).image,
+                            LookUp(
+                                StageStatesIcons,
+                                state = "empty"
+                            ).image
+                        ),
+                        With(
+                            {
+                                gitStatus: LookUp(
+                                    SolutionsLatestBuildStatuses,
+                                    uniquename = ThisItem.uniquename
+                                ).deploySolutionStatus.status,
+                                gitResult: LookUp(
+                                    SolutionsLatestBuildStatuses,
+                                    uniquename = ThisItem.uniquename
+                                ).deploySolutionStatus.result
+                            },
+                            If(
+                                IsBlank(gitStatus),
+                                LookUp(
+                                    StageStatesIcons,
+                                    state = "empty"
+                                ).image,
+                                If(
+                                    gitStatus = "completed",
+                                    LookUp(
+                                        StageStatesIcons,
+                                        state = gitResult
+                                    ).image,
+                                    LookUp(
+                                        StageStatesIcons,
+                                        state = gitStatus
+                                    ).image
+                                )
+                            )
+                        )
                     )
                 )
             OnSelect: =Select(Parent);
@@ -665,11 +717,34 @@ Home As screen:
                         )
                     }
                 );
-                Launch(
-                    "https://dev.azure.com/" & locPRProfile.'AzDO Organization' & "/" & locPRProfile.'AzDO Project' & "/_git/" & locPRProfile.Repository & "/pullrequest/" & LookUp(
-                        SolutionsLatestBuildStatuses,
-                        uniquename = ThisItem.uniquename
-                    ).pullRequestStatus.pullRequestId
+                If(
+                    !IsBlankOrError(
+                        LookUp(
+                            SolutionsLatestBuildStatuses,
+                            uniquename = ThisItem.uniquename
+                        ).pullRequestStatus
+                    ),
+                    Launch(
+                        "https://dev.azure.com/" & locPRProfile.'AzDO Organization' & "/" & locPRProfile.'AzDO Project' & "/_git/" & locPRProfile.Repository & "/pullrequest/" & LookUp(
+                            SolutionsLatestBuildStatuses,
+                            uniquename = ThisItem.uniquename
+                        ).pullRequestStatus.pullRequestId
+                    ),
+                    If(
+                        !IsBlankOrError(
+                            LookUp(
+                                SolutionsLatestBuildStatuses,
+                                uniquename = ThisItem.uniquename
+                            ).deploySolutionStatus
+                        ),
+                        Launch(
+                            LookUp(
+                                SolutionsLatestBuildStatuses,
+                                uniquename = ThisItem.uniquename
+                            ).deploySolutionStatus._links.web.href
+                        )
+                    );
+                    
                 );
             PressedBorderColor: =ColorFade(icoLaunchPullRequestUrl.BorderColor, -20%)
             PressedColor: =ColorFade(icoLaunchPullRequestUrl.Color, -20%)
@@ -1352,7 +1427,7 @@ Home As screen:
             HoverFill: =ColorFade(btnCommit.Fill, 20%)
             OnSelect: |-
                 =If(
-                    deploymentStage = "PREPARE",
+                    promoteStage = "PREPARE",
                     Set(
                         ReturnScreen,
                         Home
@@ -1377,7 +1452,7 @@ Home As screen:
                         DeploymentSettingsScreen,
                         ScreenTransition.Fade
                     );
-                    UpdateContext({deploymentStage: "PROMOTE"});
+                    UpdateContext({promoteStage: "PROMOTE"});
                     ,
                     UpdateContext(
                         {
@@ -1508,6 +1583,7 @@ Home As screen:
                             'Request Type': [@Type].Promote
                         }
                     );
+                    Reset(tglPublishBypassPrepare);
                     Reset(tglCreateBranch);
                     Reset(txtCommitMessage);
                     Reset(txtBranchToCreate);
@@ -1520,7 +1596,7 @@ Home As screen:
             PressedBorderColor: =btnCommit.Fill
             PressedColor: =btnCommit.Fill
             PressedFill: =btnCommit.Color
-            Text: =deploymentStage
+            Text: =promoteStage
             Width: =200
             X: =330
             Y: =1015
@@ -1816,6 +1892,35 @@ Home As screen:
             Width: =52
             X: =450
             ZIndex: =16
+
+        tglPublishBypassPrepare As toggleSwitch:
+            AccessibleLabel: ="Bypass Prepare"
+            FalseFill: =RGBA(237, 237, 237, 1)
+            FalseHoverFill: =ColorFade(tglPublishBypassPrepare.FalseFill, 20%)
+            FalseText: ="Bypass Prepare"
+            FontWeight: =FontWeight.Semibold
+            HandleFill: =If(tglPublishBypassPrepare.Value, PrimaryColor1Value, PrimaryColor2Value)
+            HoverBorderColor: =ColorFade(tglPublishBypassPrepare.BorderColor, 20%)
+            OnChange: |
+                =If(
+                    tglPublishBypassPrepare.Value,
+                    UpdateContext({promoteStage: "PROMOTE"}),
+                    UpdateContext({promoteStage: "PREPARE"})
+                );
+            PressedBorderColor: =ColorFade(tglPublishBypassPrepare.BorderColor, -20%)
+            TextPosition: =TextPosition.Left
+            TrueHoverFill: =ColorFade(tglPublishBypassPrepare.TrueFill, 20%)
+            TrueText: ="Bypass Prepare"
+            Visible: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Bypass Prepare') Or DeploymentUserSetting.'Bypass Prepare' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
+            Width: =200
+            X: =328
+            Y: =971
+            ZIndex: =17
 
     ImportDialog As groupContainer:
         DisplayMode: =DisplayMode.Edit
@@ -2678,10 +2783,10 @@ Home As screen:
             FontWeight: =Normal
             Height: =51
             HoverColor: =Self.BorderColor
-            OnSelect: |-
-                =    UpdateContext({locStartCheckBuildStatusTimer: false});
-                    Reset(tmrCheckBuildAndPullRequestStatuses);
-                    UpdateContext({locStartCheckBuildStatusTimer: true});
+            OnSelect: |
+                =UpdateContext({locStartCheckBuildStatusTimer: false});
+                Reset(tmrCheckBuildAndPullRequestStatuses);
+                UpdateContext({locStartCheckBuildStatusTimer: true});
             Size: =14
             Text: ="REFRESH"
             Tooltip: ="Refresh Solution(s) and Statuses"
@@ -2701,10 +2806,10 @@ Home As screen:
             HoverColor: =ColorFade(icoRefreshSolutionsLabel.Color, 20%)
             HoverFill: =ColorFade(icoRefreshSolutionsLabel.Fill, 20%)
             Icon: =
-            OnSelect: |-
-                =    UpdateContext({locStartCheckBuildStatusTimer: false});
-                    Reset(tmrCheckBuildAndPullRequestStatuses);
-                    UpdateContext({locStartCheckBuildStatusTimer: true});
+            OnSelect: |
+                =UpdateContext({locStartCheckBuildStatusTimer: false});
+                Reset(tmrCheckBuildAndPullRequestStatuses);
+                UpdateContext({locStartCheckBuildStatusTimer: true});
             PaddingBottom: =8
             PaddingLeft: =8
             PaddingRight: =5
@@ -2844,52 +2949,127 @@ Home As screen:
             HoverBorderColor: =ColorFade(btnCreate.BorderColor, 20%)
             HoverColor: =ColorFade(btnCreate.Color, 20%)
             HoverFill: =ColorFade(btnCreate.Fill, 20%)
-            OnSelect: |
-                =UpdateContext(
+            OnSelect: |-
+                =If(
+                    promoteStage = "PREPARE",
+                    Set(
+                        ReturnScreen,
+                        Home
+                    );
+                    Set(
+                        ReinitializeHome,
+                        false
+                    );
+                    Set(
+                        SelectedDeploymentProfile,
+                        drpPRDeploymentProfiles.Selected
+                    );
+                    Set(
+                        SelectedDeploymentStep,
+                        First(drpPRDeploymentProfiles.Selected.'Deployment Steps')
+                    );
+                    Set(
+                        SelectedSolutionToConfigure,
+                        glrSolutions.Selected
+                    );
+                    Navigate(
+                        DeploymentSettingsScreen,
+                        ScreenTransition.Fade
+                    );
+                    UpdateContext({promoteStage: "DEPLOY"});
+                    ,
+                
+                UpdateContext(
                     {
                         showDialogOverlay: false,
                         showPullRequestDialog: false
                     }
                 );
-                UpdateContext(
-                    {
-                        pullRequestId: CustomAzureDevOps.CreatePullRequest(
-                            drpPRDeploymentProfiles.Selected.'AzDO Organization',
-                            drpPRDeploymentProfiles.Selected.'AzDO Project',
-                            drpPRDeploymentProfiles.Selected.'Repository ID',
-                            {
-                                sourceRefName: drpPullRequestSourceBranches.Selected.name,
-                                targetRefName: drpPullRequestTargetBranches.Selected.name,
-                                title: txtPullRequestTitle.Text,
-                                description: txtPullRequestDescription.Text
-                            }
-                        ).pullRequestId
-                    }
+                If(
+                    DeploymentUserSetting.'Advanced Deploy' = 'A Yes or No boolean'.Allowed And tglPRAdvancedSettings.Value,
+                    UpdateContext(
+                        {
+                            pullRequestId: CustomAzureDevOps.CreatePullRequest(
+                                drpPRDeploymentProfiles.Selected.'AzDO Organization',
+                                drpPRDeploymentProfiles.Selected.'AzDO Project',
+                                drpPRDeploymentProfiles.Selected.'Repository ID',
+                                {
+                                    sourceRefName: drpPullRequestSourceBranches.Selected.name,
+                                    targetRefName: drpPullRequestTargetBranches.Selected.name,
+                                    title: txtPullRequestTitle.Text,
+                                    description: txtPullRequestDescription.Text
+                                }
+                            ).pullRequestId
+                        }
+                    );
+                    Patch(
+                        'Deployment Requests',
+                        {
+                            Name: glrSolutions.Selected.friendlyname & " - Deploy (" & Text(
+                                Now(),
+                                ShortDateTime
+                            ) & ")",
+                            'Source Branch': drpPullRequestSourceBranches.Selected.name,
+                            'Target Branch': drpPullRequestTargetBranches.Selected.name,
+                            'Solution Name': glrSolutions.Selected.uniquename,
+                            'Deployment Profile': drpPRDeploymentProfiles.Selected,
+                            'Build ID': pullRequestId,
+                            'Request Type': [@Type].Deploy
+                        }
+                    ),
+                    ClearCollect(
+                        locPipelines,
+                        CustomAzureDevOps.GetPipelines(
+                            drpPushDeploymentProfiles.Selected.'AzDO Organization',
+                            drpPushDeploymentProfiles.Selected.'AzDO Project'
+                        ).value
+                    );
+                    
+                    UpdateContext(
+                        {
+                            piplineIdToRun: LookUp(
+                                locPipelines,
+                                name = "deploy-" & Lower(drpDeploymentSteps.Selected.Name) & "-" & glrSolutions.Selected.uniquename
+                            ).id
+                        }
+                    );
+                    UpdateContext(
+                        {
+                            buildId: CustomAzureDevOps.RunPipeline(
+                                drpPRDeploymentProfiles.Selected.'AzDO Organization',
+                                drpPRDeploymentProfiles.Selected.'AzDO Project',
+                                piplineIdToRun,
+                                {definition: {id: piplineIdToRun}}
+                            ).id
+                        }
+                    );
+                    Patch(
+                        'Deployment Requests',
+                        {
+                            Name: glrSolutions.Selected.friendlyname & " - Deploy (" & Text(
+                                Now(),
+                                ShortDateTime
+                            ) & ")",
+                            'Solution Name': glrSolutions.Selected.uniquename,
+                            'Deployment Profile': drpPRDeploymentProfiles.Selected,
+                            'Build ID': buildId,
+                            'Deployment Step': drpDeploymentSteps.Selected,
+                            'Request Type': [@Type].Deploy
+                        }
+                    );
+                    
                 );
-                Patch(
-                    'Deployment Requests',
-                    {
-                        Name: glrSolutions.Selected.friendlyname & " - Deploy (" & Text(
-                            Now(),
-                            ShortDateTime
-                        ) & ")",
-                        'Solution Name': glrSolutions.Selected.uniquename,
-                        'Deployment Profile': drpPRDeploymentProfiles.Selected,
-                        'Source Branch': drpPullRequestSourceBranches.Selected.DisplayName,
-                        'Target Branch': drpPullRequestTargetBranches.Selected.DisplayName,
-                        'Build ID': pullRequestId,
-                        'Request Type': [@Type].Deploy
-                    }
-                );
+                Reset(tglPRBypassPrepare);
                 Reset(txtPullRequestTitle);
                 Reset(txtPullRequestDescription);
                 UpdateContext({locStartCheckBuildStatusTimer: false});
                 Reset(tmrCheckBuildAndPullRequestStatuses);
                 UpdateContext({locStartCheckBuildStatusTimer: true});
+                );
             PressedBorderColor: =btnCreate.Fill
             PressedColor: =btnCreate.Fill
             PressedFill: =btnCreate.Color
-            Text: ="DEPLOY"
+            Text: =deployStage
             Width: =200
             X: =330
             Y: =1015
@@ -3041,7 +3221,7 @@ Home As screen:
             Visible: =!tglPRAdvancedSettings.Value
             Width: =500
             X: =32
-            Y: =517
+            Y: =If(DeploymentUserSetting.'Advanced Deploy' = 'A Yes or No boolean'.Allowed, 517, 462)
             ZIndex: =20
 
         lblDeploymentEnvironment As label:
@@ -3054,7 +3234,7 @@ Home As screen:
             Visible: =!tglPRAdvancedSettings.Value
             Width: =458
             X: =32
-            Y: =472
+            Y: =If(DeploymentUserSetting.'Advanced Deploy' = 'A Yes or No boolean'.Allowed, 472, 417)
             ZIndex: =21
 
         tglPRAdvancedSettings As toggleSwitch:
@@ -3108,6 +3288,35 @@ Home As screen:
             Width: =52
             X: =450
             ZIndex: =23
+
+        tglPRBypassPrepare As toggleSwitch:
+            AccessibleLabel: ="Bypass Prepare"
+            FalseFill: =RGBA(237, 237, 237, 1)
+            FalseHoverFill: =ColorFade(tglPRBypassPrepare.FalseFill, 20%)
+            FalseText: ="Bypass Prepare"
+            FontWeight: =FontWeight.Semibold
+            HandleFill: =If(tglPRBypassPrepare.Value, PrimaryColor1Value, PrimaryColor2Value)
+            HoverBorderColor: =ColorFade(tglPRBypassPrepare.BorderColor, 20%)
+            OnChange: |
+                =If(
+                    tglPRBypassPrepare.Value,
+                    UpdateContext({deployStage: "DEPLOY"}),
+                    UpdateContext({deployStage: "PREPARE"})
+                );
+            PressedBorderColor: =ColorFade(tglPRBypassPrepare.BorderColor, -20%)
+            TextPosition: =TextPosition.Left
+            TrueHoverFill: =ColorFade(tglPRBypassPrepare.TrueFill, 20%)
+            TrueText: ="Bypass Prepare"
+            Visible: |-
+                =If(
+                    IsBlankOrError(DeploymentUserSetting) Or IsBlankOrError(DeploymentUserSetting.'Bypass Prepare') Or DeploymentUserSetting.'Bypass Prepare' = 'A Yes or No boolean'.Allowed,
+                    true,
+                    false
+                )
+            Width: =200
+            X: =330
+            Y: =971
+            ZIndex: =24
 
     DeleteSolutionDialog As groupContainer:
         DisplayMode: =DisplayMode.Edit
@@ -4062,7 +4271,7 @@ Home As screen:
                         'Created On',
                         "BuildStatus",
                         If(
-                            !IsBlankOrError('Deployment Profile') And !IsBlankOrError('Deployment Profile'.'AzDO Organization') And !IsBlankOrError('Deployment Profile'.'AzDO Project') And !IsBlankOrError('Build ID') And 'Request Type' <> [@Type].Deploy,
+                            !IsBlankOrError('Deployment Profile') And !IsBlankOrError('Deployment Profile'.'AzDO Organization') And !IsBlankOrError('Deployment Profile'.'AzDO Project') And !IsBlankOrError('Build ID') And ('Request Type' <> [@Type].Deploy Or IsBlankOrError('Source Branch')),
                             LookUp(
                                 LookUp(
                                     ProfileBuilds,
@@ -4073,7 +4282,7 @@ Home As screen:
                         ),
                         "PullRequestStatus",
                         If(
-                            !IsBlankOrError('Deployment Profile') And !IsBlankOrError('Deployment Profile'.'AzDO Organization') And !IsBlankOrError('Deployment Profile'.'AzDO Project') And !IsBlankOrError('Deployment Profile'.Repository) And !IsBlankOrError('Deployment Profile'.'Repository ID') And !IsBlankOrError('Build ID') And 'Request Type' = [@Type].Deploy,
+                            !IsBlankOrError('Deployment Profile') And !IsBlankOrError('Deployment Profile'.'AzDO Organization') And !IsBlankOrError('Deployment Profile'.'AzDO Project') And !IsBlankOrError('Deployment Profile'.Repository) And !IsBlankOrError('Deployment Profile'.'Repository ID') And !IsBlankOrError('Build ID') And !IsBlankOrError('Source Branch') And 'Request Type' = [@Type].Deploy,
                             CustomAzureDevOps.GetPullReqeust(
                                 'Deployment Profile'.'AzDO Organization',
                                 'Deployment Profile'.'AzDO Project',
@@ -4115,6 +4324,25 @@ Home As screen:
                                         ).'Build ID'
                                     ).BuildStatus
                                 ),
+                                deploySolutionStatus: If(
+                                    !IsBlankOrError(
+                                        First(
+                                            Filter(
+                                                e.deploymentrequests,
+                                                'Deployment Profile'.'Deployment Profile' = e.deploymentprofile.'Deployment Profile' And 'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And Status = 'Status (Deployment Requests)'.Active And IsBlankOrError('Source Branch')
+                                            )
+                                        )
+                                    ),
+                                    LookUp(
+                                        DeploymentRequestHistory,
+                                        'Build ID' = First(
+                                            Filter(
+                                                e.deploymentrequests,
+                                                'Deployment Profile'.'Deployment Profile' = e.deploymentprofile.'Deployment Profile' And 'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And Status = 'Status (Deployment Requests)'.Active And IsBlankOrError('Source Branch')
+                                            )
+                                        ).'Build ID'
+                                    ).BuildStatus
+                                ),
                                 deleteSolutionStatus: If(
                                     !IsBlankOrError(
                                         First(
@@ -4139,7 +4367,7 @@ Home As screen:
                                         First(
                                             Filter(
                                                 e.deploymentrequests,
-                                                'Deployment Profile'.'Deployment Profile' = e.deploymentprofile.'Deployment Profile' And 'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And Status = 'Status (Deployment Requests)'.Active
+                                                'Deployment Profile'.'Deployment Profile' = e.deploymentprofile.'Deployment Profile' And 'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And Status = 'Status (Deployment Requests)'.Active And !IsBlankOrError('Source Branch')
                                             )
                                         )
                                     ),
@@ -4148,7 +4376,7 @@ Home As screen:
                                         'Build ID' = First(
                                             Filter(
                                                 e.deploymentrequests,
-                                                'Deployment Profile'.'Deployment Profile' = e.deploymentprofile.'Deployment Profile' And 'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And Status = 'Status (Deployment Requests)'.Active
+                                                'Deployment Profile'.'Deployment Profile' = e.deploymentprofile.'Deployment Profile' And 'Request Type' = [@Type].Deploy And 'Created By'.User = gblCdsUser.User And Status = 'Status (Deployment Requests)'.Active And !IsBlankOrError('Source Branch')
                                             )
                                         ).'Build ID'
                                     ).PullRequestStatus
@@ -4162,7 +4390,12 @@ Home As screen:
                     TempSolutionsLatestBuildStatuses
                 );
                 Clear(TempSolutionsLatestBuildStatuses);
-                UpdateContext({statusesLoading: false});
+                UpdateContext(
+                    {
+                        statusesLoading: false,
+                        locStartCheckBuildStatusTimer: true
+                    }
+                );
             PressedBorderColor: =fncRefreshStatuses.Fill
             PressedColor: =fncRefreshStatuses.Fill
             PressedFill: =fncRefreshStatuses.Color
@@ -4498,7 +4731,7 @@ Home As screen:
         HoverColor: =ColorFade(tmrCheckBuildAndPullRequestStatuses.Color, 20%)
         HoverFill: =ColorFade(tmrCheckBuildAndPullRequestStatuses.Fill, 20%)
         OnTimerEnd: =
-        OnTimerStart: =Select(fncRefreshStatuses)
+        OnTimerStart: =Select(fncRefreshStatuses);
         PressedBorderColor: =tmrCheckBuildAndPullRequestStatuses.Fill
         PressedColor: =tmrCheckBuildAndPullRequestStatuses.Fill
         PressedFill: =tmrCheckBuildAndPullRequestStatuses.Color

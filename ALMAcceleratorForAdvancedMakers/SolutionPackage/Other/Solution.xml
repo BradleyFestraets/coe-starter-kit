@@ -85,6 +85,7 @@
       <RootComponent type="1" schemaName="cat_deploymentstep" behavior="0" />
       <RootComponent type="1" schemaName="cat_deploymentusersetting" behavior="0" />
       <RootComponent type="1" schemaName="cat_usersetting" behavior="0" />
+      <RootComponent type="9" schemaName="cat_approvaltype" behavior="0" />
       <RootComponent type="9" schemaName="cat_deploymentrequesttype" behavior="0" />
       <RootComponent type="20" id="{8865c084-ca59-eb11-a812-000d3a8b34a0}" behavior="0" />
       <RootComponent type="29" id="{3c3a56b7-2c04-ec11-94ef-0022481de3bc}" behavior="0" />

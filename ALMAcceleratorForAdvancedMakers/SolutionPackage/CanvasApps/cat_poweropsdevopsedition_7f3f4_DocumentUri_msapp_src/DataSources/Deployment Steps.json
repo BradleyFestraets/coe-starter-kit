@@ -9,6 +9,7 @@
     "MaxGetRowsCount": 500,
     "Name": "Deployment Steps",
     "NativeCDSDataSourceInfoNameMapping": {
+      "cat_approvaltype": "Approval Type",
       "cat_DeploymentEnvironmentId": "Deployment Environment",
       "cat_DeploymentProfileId": "Deployment Profile",
       "cat_DeploymentRequest_cat_DeploymentStepI": "Deployment Requests",
@@ -58,6 +59,26 @@
       "9f4e39e5-0b17-44c2-ab03-bbb7d8538103": "Deployment Step Associated View",
       "aa435294-c586-463e-b1a6-590a6766b8fa": "Deployment Step Advanced Find View"
     }
+  },
+  {
+    "DisplayName": "Approval Type",
+    "Name": "cat_approvaltype",
+    "OptionSetInfoNameMapping": {
+      "809060000": "Pull Request",
+      "809060001": "Environment"
+    },
+    "OptionSetIsBooleanValued": false,
+    "OptionSetIsGlobal": true,
+    "OptionSetReference": {
+      "OptionSetReferenceItem0": {
+        "OptionSetReferenceColumnName": "cat_approvaltype",
+        "OptionSetReferenceEntityName": "Deployment Steps"
+      }
+    },
+    "OptionSetTypeKey": "MultiSelectPicklistType",
+    "RelatedColumnInvariantName": "cat_approvaltype",
+    "RelatedEntityName": "Deployment Steps",
+    "Type": "OptionSetInfo"
   },
   {
     "DisplayName": "Status (Deployment Steps)",
